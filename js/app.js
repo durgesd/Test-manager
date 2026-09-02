@@ -152,8 +152,28 @@ const App = (() => {
       correctIndex: 0,
       marks: null, negMarks: null,
       subject: '', chapter: '', difficulty: 'Medium',
-      explanation: '', section: ''
+      explanation: '', explanationImage: '', section: '', tags: [],
+      createdAt: Date.now()
     };
+  }
+
+  /* ---------------------------------------------------------
+     Text similarity — used for duplicate detection in the bank
+  --------------------------------------------------------- */
+  function normalizeText(s){
+    return (s || '').toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function textSimilarity(a, b){
+    const wa = new Set(normalizeText(a).split(' ').filter(Boolean));
+    const wb = new Set(normalizeText(b).split(' ').filter(Boolean));
+    if(!wa.size || !wb.size) return 0;
+    let inter = 0;
+    wa.forEach(w => { if(wb.has(w)) inter++; });
+    const union = new Set([...wa, ...wb]).size;
+    return union ? inter / union : 0;
+  }
+  function findSimilarInBank(text, excludeId){
+    return state.bank.find(q => q.id !== excludeId && textSimilarity(q.text, text) > 0.82);
   }
 
   /* ---------------------------------------------------------
@@ -335,6 +355,8 @@ const App = (() => {
               <span class="tag">${escapeHtml(q.difficulty||'Medium')}</span>
               ${q.section ? `<span class="tag correct">${escapeHtml(q.section)}</span>` : ''}
               ${q.subject ? `<span class="tag">${escapeHtml(q.subject)}</span>` : ''}
+              ${q.explanationImage ? `<span class="tag">🖼 explanation</span>` : ''}
+              ${(q.tags||[]).map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join('')}
             </div>
           </div>
           <div class="qcard-actions">
@@ -432,9 +454,13 @@ const App = (() => {
       const file = inp.files[0];
       if(!file) return;
       const raw = await fileToDataURL(file);
-      const compressed = await compressImage(raw, 500);
-      currentEditQuestion.options[idx].image = compressed;
-      grid.querySelector(`[data-opt-preview="${idx}"]`).innerHTML = `<img src="${compressed}">`;
+      window.Cropper.open(raw, async (cropped) => {
+        inp.value = '';
+        if(!cropped) return;
+        const compressed = await compressImage(cropped, 600);
+        currentEditQuestion.options[idx].image = compressed;
+        grid.querySelector(`[data-opt-preview="${idx}"]`).innerHTML = `<img src="${compressed}">`;
+      });
     }));
   }
 
@@ -462,7 +488,9 @@ const App = (() => {
     document.getElementById('q-subject').value = currentEditQuestion.subject || '';
     document.getElementById('q-chapter').value = currentEditQuestion.chapter || '';
     document.getElementById('q-difficulty').value = currentEditQuestion.difficulty || 'Medium';
+    document.getElementById('q-tags').value = (currentEditQuestion.tags || []).join(', ');
     document.getElementById('q-explanation').value = currentEditQuestion.explanation || '';
+    document.getElementById('q-explanation-image-preview').innerHTML = currentEditQuestion.explanationImage ? `<img src="${currentEditQuestion.explanationImage}">` : '';
 
     renderOptionsEditor(currentEditQuestion);
     document.getElementById('qModalBackdrop').classList.add('open');
@@ -481,6 +509,7 @@ const App = (() => {
     currentEditQuestion.subject = document.getElementById('q-subject').value.trim();
     currentEditQuestion.chapter = document.getElementById('q-chapter').value.trim();
     currentEditQuestion.difficulty = document.getElementById('q-difficulty').value;
+    currentEditQuestion.tags = document.getElementById('q-tags').value.split(',').map(t => t.trim()).filter(Boolean);
     currentEditQuestion.explanation = document.getElementById('q-explanation').value.trim();
 
     if(!currentEditQuestion.text){ toast('Question text is required', 'err'); return; }
@@ -505,9 +534,25 @@ const App = (() => {
       const file = e.target.files[0];
       if(!file || !currentEditQuestion) return;
       const raw = await fileToDataURL(file);
-      const compressed = await compressImage(raw, 900);
-      currentEditQuestion.image = compressed;
-      document.getElementById('q-image-preview').innerHTML = `<img src="${compressed}">`;
+      window.Cropper.open(raw, async (cropped) => {
+        e.target.value = '';
+        if(!cropped) return;
+        const compressed = await compressImage(cropped, 1000);
+        currentEditQuestion.image = compressed;
+        document.getElementById('q-image-preview').innerHTML = `<img src="${compressed}">`;
+      });
+    }
+    if(e.target && e.target.id === 'q-explanation-image'){
+      const file = e.target.files[0];
+      if(!file || !currentEditQuestion) return;
+      const raw = await fileToDataURL(file);
+      window.Cropper.open(raw, async (cropped) => {
+        e.target.value = '';
+        if(!cropped) return;
+        const compressed = await compressImage(cropped, 800);
+        currentEditQuestion.explanationImage = compressed;
+        document.getElementById('q-explanation-image-preview').innerHTML = `<img src="${compressed}">`;
+      });
     }
   });
 
@@ -559,7 +604,8 @@ const App = (() => {
                 </div>
               `).join('')}
             </div>
-            ${q.explanation ? `<p class="muted-note" style="margin-top:8px;"><strong>Explanation:</strong> ${escapeHtml(q.explanation)}</p>` : ''}
+            ${(q.explanation || q.explanationImage) ? `<p class="muted-note" style="margin-top:8px;"><strong>Explanation:</strong> ${escapeHtml(q.explanation)}</p>${q.explanationImage ? `<img src="${q.explanationImage}" style="max-width:100%;max-height:160px;border-radius:8px;">` : ''}` : ''}
+            ${(q.tags||[]).length ? `<div style="margin-top:6px;">${q.tags.map(t=>`<span class="tag-chip" style="margin-right:4px;">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -596,10 +642,13 @@ const App = (() => {
   /* ---------------------------------------------------------
      QUESTION BANK
   --------------------------------------------------------- */
+  let bankSelection = new Set();
+
   function renderBank(){
     const search = document.getElementById('bankSearch').value.trim().toLowerCase();
     const fSubject = document.getElementById('bankFilterSubject').value;
     const fDiff = document.getElementById('bankFilterDifficulty').value;
+    const sortBy = document.getElementById('bankSort').value;
 
     const subjects = [...new Set(state.bank.map(q => q.subject).filter(Boolean))].sort();
     const sel = document.getElementById('bankFilterSubject');
@@ -607,29 +656,51 @@ const App = (() => {
     sel.innerHTML = '<option value="">All subjects</option>' + subjects.map(s => `<option ${s===current?'selected':''}>${escapeHtml(s)}</option>`).join('');
 
     let items = state.bank.filter(q =>
-      (!search || q.text.toLowerCase().includes(search)) &&
+      (!search || q.text.toLowerCase().includes(search) || (q.tags||[]).some(t => t.toLowerCase().includes(search))) &&
       (!fSubject || q.subject === fSubject) &&
       (!fDiff || q.difficulty === fDiff)
     );
 
+    items = items.slice().sort((a,b) => {
+      if(sortBy === 'oldest') return (a.createdAt||0) - (b.createdAt||0);
+      if(sortBy === 'subject') return (a.subject||'').localeCompare(b.subject||'');
+      if(sortBy === 'difficulty') return (a.difficulty||'').localeCompare(b.difficulty||'');
+      return (b.createdAt||0) - (a.createdAt||0);
+    });
+
     document.getElementById('bankCountBadge').textContent = state.bank.length;
+
+    // stats strip
+    const byDiff = { Easy:0, Medium:0, Hard:0 };
+    state.bank.forEach(q => { byDiff[q.difficulty||'Medium'] = (byDiff[q.difficulty||'Medium']||0)+1; });
+    document.getElementById('bankStats').innerHTML = state.bank.length ? `
+      <span class="tag">${subjects.length} subjects</span>
+      <span class="tag">${byDiff.Easy||0} easy</span>
+      <span class="tag">${byDiff.Medium||0} medium</span>
+      <span class="tag">${byDiff.Hard||0} hard</span>
+    ` : '';
+
     const list = document.getElementById('bankList');
     if(!items.length){
       list.innerHTML = `<div class="empty-state">
         <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/></svg>
         <p>No questions match. Try clearing filters, or add a new question to the bank.</p>
       </div>`;
+      updateBankBulkBar();
       return;
     }
     list.innerHTML = items.map(q => `
       <div class="qcard" data-qid="${q.id}">
         <div class="qcard-top">
+          <label class="qcard-select"><input type="checkbox" data-bank-select="${q.id}" ${bankSelection.has(q.id)?'checked':''}></label>
           <div class="qcard-body">
             <div class="qcard-text">${escapeHtml(q.text)}${q.image ? `<img src="${q.image}" alt="">`:''}</div>
             <div class="qcard-opts">${q.options.map((o,idx) => `<span class="${idx===q.correctIndex?'opt-correct':''}">${letters[idx]}. ${escapeHtml(o.text)}</span>`).join('')}</div>
             <div class="qcard-meta">
               <span class="tag">${escapeHtml(q.subject||'—')}</span>
               <span class="tag">${escapeHtml(q.difficulty||'Medium')}</span>
+              ${q.explanationImage ? `<span class="tag">🖼 explanation</span>` : ''}
+              ${(q.tags||[]).map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join('')}
             </div>
           </div>
           <div class="qcard-actions">
@@ -646,10 +717,30 @@ const App = (() => {
       card.querySelector('[data-act="del"]').addEventListener('click', async () => {
         if(await confirmDialog('Delete from bank?', 'This only removes it from the bank, not from tests it was copied into.')){
           state.bank = state.bank.filter(q => q.id !== qid);
+          bankSelection.delete(qid);
           saveBank(); renderBank();
         }
       });
+      card.querySelector('[data-bank-select]').addEventListener('change', (e) => {
+        if(e.target.checked) bankSelection.add(qid); else bankSelection.delete(qid);
+        updateBankBulkBar();
+      });
     });
+    updateBankBulkBar();
+  }
+
+  function updateBankBulkBar(){
+    const bar = document.getElementById('bankBulkBar');
+    const count = bankSelection.size;
+    bar.style.display = count ? 'flex' : 'none';
+    document.getElementById('bankBulkCount').textContent = count + ' selected';
+    const selectAll = document.getElementById('bankSelectAll');
+    const visible = document.querySelectorAll('#bankList [data-bank-select]');
+    if(visible.length){
+      selectAll.checked = [...visible].every(cb => bankSelection.has(cb.dataset.bankSelect));
+    } else {
+      selectAll.checked = false;
+    }
   }
 
   let bankEditingId = null;
@@ -670,7 +761,9 @@ const App = (() => {
     document.getElementById('q-subject').value = currentEditQuestion.subject || '';
     document.getElementById('q-chapter').value = currentEditQuestion.chapter || '';
     document.getElementById('q-difficulty').value = currentEditQuestion.difficulty || 'Medium';
+    document.getElementById('q-tags').value = (currentEditQuestion.tags || []).join(', ');
     document.getElementById('q-explanation').value = currentEditQuestion.explanation || '';
+    document.getElementById('q-explanation-image-preview').innerHTML = currentEditQuestion.explanationImage ? `<img src="${currentEditQuestion.explanationImage}">` : '';
     renderOptionsEditor(currentEditQuestion);
     modalSaveTarget = 'bank';
     document.getElementById('qModalBackdrop').classList.add('open');
@@ -685,9 +778,12 @@ const App = (() => {
     currentEditQuestion.subject = document.getElementById('q-subject').value.trim();
     currentEditQuestion.chapter = document.getElementById('q-chapter').value.trim();
     currentEditQuestion.difficulty = document.getElementById('q-difficulty').value;
+    currentEditQuestion.tags = document.getElementById('q-tags').value.split(',').map(t => t.trim()).filter(Boolean);
     currentEditQuestion.explanation = document.getElementById('q-explanation').value.trim();
     if(!currentEditQuestion.text){ toast('Question text is required', 'err'); return; }
     if(currentEditQuestion.options.some(o => !o.text.trim())){ toast('All 4 options (A–D) need text', 'err'); return; }
+
+    const dupe = findSimilarInBank(currentEditQuestion.text, bankEditingId);
 
     if(bankEditingId){
       const idx = state.bank.findIndex(q => q.id === bankEditingId);
@@ -696,7 +792,7 @@ const App = (() => {
       state.bank.push(currentEditQuestion);
     }
     saveBank(); renderBank(); closeQuestionModal();
-    toast('Saved to question bank', 'ok');
+    toast(dupe ? 'Saved — but a similar question already exists in the bank' : 'Saved to question bank', dupe ? undefined : 'ok');
   }
 
   /* ---------------------------------------------------------
@@ -771,6 +867,138 @@ const App = (() => {
       <div><b>${t.duration||60}m</b>Suggested duration</div>
     `;
   }
+
+  /* ---------------------------------------------------------
+     BULK IMPORT — fixed-format parser (works for both Test Builder and Bank)
+  --------------------------------------------------------- */
+  const bulkPatterns = {
+    q:   /^q(?:uestion)?\s*\d*\s*[\.\):]\s*(.+)$/i,
+    a:   /^a\s*[\.\):]\s*(.+)$/i,
+    b:   /^b\s*[\.\):]\s*(.+)$/i,
+    c:   /^c\s*[\.\):]\s*(.+)$/i,
+    d:   /^d\s*[\.\):]\s*(.+)$/i,
+    correct: /^(?:correct|answer)\s*[:\-]?\s*([a-dA-D])\b/i,
+    marks: /^marks?\s*[:\-]\s*([\d.]+)/i,
+    neg: /^neg(?:ative)?(?:\s*marks?)?\s*[:\-]\s*([\d.]+)/i,
+    subject: /^subject\s*[:\-]\s*(.+)$/i,
+    chapter: /^chapter\s*[:\-]\s*(.+)$/i,
+    difficulty: /^difficulty\s*[:\-]\s*(.+)$/i,
+    tags: /^tags?\s*[:\-]\s*(.+)$/i,
+    section: /^section\s*[:\-]\s*(.+)$/i,
+    explanation: /^explanation\s*[:\-]\s*(.+)$/i
+  };
+
+  function parseBulkQuestions(rawText){
+    const blocks = rawText.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+    return blocks.map(block => {
+      const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+      const q = blankQuestion();
+      let lastField = null;
+      const setLast = (field) => { lastField = field; };
+      lines.forEach(line => {
+        let m;
+        if((m = line.match(bulkPatterns.q))){ q.text = (q.text ? q.text + ' ' : '') + m[1]; setLast('text'); return; }
+        if((m = line.match(bulkPatterns.a))){ q.options[0].text = m[1]; setLast(null); return; }
+        if((m = line.match(bulkPatterns.b))){ q.options[1].text = m[1]; setLast(null); return; }
+        if((m = line.match(bulkPatterns.c))){ q.options[2].text = m[1]; setLast(null); return; }
+        if((m = line.match(bulkPatterns.d))){ q.options[3].text = m[1]; setLast(null); return; }
+        if((m = line.match(bulkPatterns.correct))){ q.correctIndex = 'abcd'.indexOf(m[1].toLowerCase()); setLast(null); return; }
+        if((m = line.match(bulkPatterns.marks))){ q.marks = Number(m[1]); setLast(null); return; }
+        if((m = line.match(bulkPatterns.neg))){ q.negMarks = Number(m[1]); setLast(null); return; }
+        if((m = line.match(bulkPatterns.subject))){ q.subject = m[1]; setLast(null); return; }
+        if((m = line.match(bulkPatterns.chapter))){ q.chapter = m[1]; setLast(null); return; }
+        if((m = line.match(bulkPatterns.difficulty))){ q.difficulty = m[1]; setLast(null); return; }
+        if((m = line.match(bulkPatterns.tags))){ q.tags = m[1].split(',').map(t=>t.trim()).filter(Boolean); setLast(null); return; }
+        if((m = line.match(bulkPatterns.section))){ q.section = m[1]; setLast(null); return; }
+        if((m = line.match(bulkPatterns.explanation))){ q.explanation = (q.explanation ? q.explanation + ' ' : '') + m[1]; setLast('explanation'); return; }
+        // unmatched line: treat as continuation of the last free-text field
+        if(lastField === 'text') q.text += ' ' + line;
+        else if(lastField === 'explanation') q.explanation += ' ' + line;
+      });
+
+      const errors = [];
+      if(!q.text.trim()) errors.push('Missing question text (start a line with "Q:")');
+      q.options.forEach((o,i) => { if(!o.text.trim()) errors.push('Missing option ' + letters[i]); });
+      if(q.correctIndex < 0 || q.correctIndex > 3) errors.push('Missing or invalid "Correct:" (must be A, B, C or D)');
+      if(!['Easy','Medium','Hard'].includes(q.difficulty)) q.difficulty = 'Medium';
+
+      return { raw: block, valid: errors.length === 0, errors, question: q };
+    });
+  }
+
+  let bulkParsedResults = [];
+  let bulkImportTarget = 'test'; // 'test' | 'bank'
+
+  function openBulkModal(target){
+    bulkImportTarget = target;
+    document.getElementById('bulkModalTitle').textContent = target === 'bank' ? 'Bulk add questions to bank' : 'Bulk add questions to this test';
+    document.getElementById('bulkText').value = '';
+    document.getElementById('bulkPreviewWrap').style.display = 'none';
+    document.getElementById('btnBulkImportAll').disabled = true;
+    document.getElementById('bulkImportCount').textContent = '';
+    bulkParsedResults = [];
+    document.getElementById('bulkModalBackdrop').classList.add('open');
+  }
+
+  function renderBulkPreview(){
+    const wrap = document.getElementById('bulkPreviewWrap');
+    const list = document.getElementById('bulkPreviewList');
+    const validCount = bulkParsedResults.filter(r => r.valid).length;
+    const invalidCount = bulkParsedResults.length - validCount;
+    document.getElementById('bulkPreviewSummary').textContent = `${validCount} valid · ${invalidCount} invalid`;
+    wrap.style.display = bulkParsedResults.length ? '' : 'none';
+
+    list.innerHTML = bulkParsedResults.map((r, i) => {
+      const dupe = bulkImportTarget === 'bank' ? findSimilarInBank(r.question.text, null) : null;
+      return `
+      <div class="bulk-item ${r.valid ? 'valid' : 'invalid'}">
+        <div class="bi-head"><span>#${i+1} — ${r.valid ? 'Valid' : 'Needs fixing'}</span></div>
+        <div class="bi-text">${escapeHtml(r.question.text || '(no question text found)')}</div>
+        ${r.errors.length ? `<div class="bi-errs">${r.errors.map(escapeHtml).join(' · ')}</div>` : ''}
+        ${dupe ? `<div class="bi-dupe">Possible duplicate of an existing bank question</div>` : ''}
+      </div>`;
+    }).join('');
+
+    document.getElementById('btnBulkImportAll').disabled = validCount === 0;
+    document.getElementById('bulkImportCount').textContent = validCount + ' question(s) ready to add';
+  }
+
+  function importBulkResults(){
+    const valid = bulkParsedResults.filter(r => r.valid).map(r => r.question);
+    if(!valid.length) return;
+    if(bulkImportTarget === 'bank'){
+      valid.forEach(q => state.bank.push(q));
+      saveBank(); renderBank();
+    } else {
+      valid.forEach(q => state.currentTest.questions.push(q));
+      renderQuestionList(); autosaveDraft();
+    }
+    document.getElementById('bulkModalBackdrop').classList.remove('open');
+    toast(valid.length + ' question(s) added', 'ok');
+  }
+
+  const BULK_TEMPLATE = `Q: What is the capital of India?
+A: Mumbai
+B: New Delhi
+C: Chennai
+D: Kolkata
+Correct: B
+Marks: 1
+Negative: 0.25
+Subject: GK
+Chapter: Geography
+Difficulty: Medium
+Tags: capitals, india
+Explanation: New Delhi has been the capital of India since 1911.
+
+Q: 7 x 8 = ?
+A: 54
+B: 56
+C: 58
+D: 64
+Correct: B
+Marks: 1
+`;
 
   /* ---------------------------------------------------------
      SETTINGS
@@ -853,6 +1081,27 @@ const App = (() => {
     document.getElementById('btnClearTest').addEventListener('click', clearCurrentTest);
     document.getElementById('btnPreviewTest').addEventListener('click', openPreview);
     document.getElementById('btnImportBank').addEventListener('click', openBankPicker);
+    document.getElementById('btnBulkAddTest').addEventListener('click', () => openBulkModal('test'));
+    document.getElementById('btnBulkAddBank').addEventListener('click', () => openBulkModal('bank'));
+
+    // bulk modal
+    document.getElementById('bulkModalClose').addEventListener('click', () => document.getElementById('bulkModalBackdrop').classList.remove('open'));
+    document.getElementById('btnBulkParse').addEventListener('click', () => {
+      const text = document.getElementById('bulkText').value;
+      if(!text.trim()){ toast('Paste some questions first', 'err'); return; }
+      bulkParsedResults = parseBulkQuestions(text);
+      renderBulkPreview();
+    });
+    document.getElementById('btnBulkImportAll').addEventListener('click', importBulkResults);
+    document.getElementById('btnDownloadTemplate').addEventListener('click', () => downloadFile('pragya-bulk-question-template.txt', BULK_TEMPLATE, 'text/plain'));
+    document.getElementById('btnBulkLoadFile').addEventListener('click', () => document.getElementById('bulkFileInput').click());
+    document.getElementById('bulkFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { document.getElementById('bulkText').value = reader.result; };
+      reader.readAsText(file);
+    });
 
     document.getElementById('qModalClose').addEventListener('click', closeQuestionModal);
     document.getElementById('qModalCancel').addEventListener('click', closeQuestionModal);
@@ -886,6 +1135,34 @@ const App = (() => {
     document.getElementById('bankSearch').addEventListener('input', renderBank);
     document.getElementById('bankFilterSubject').addEventListener('change', renderBank);
     document.getElementById('bankFilterDifficulty').addEventListener('change', renderBank);
+    document.getElementById('bankSort').addEventListener('change', renderBank);
+    document.getElementById('bankSelectAll').addEventListener('change', (e) => {
+      const boxes = document.querySelectorAll('#bankList [data-bank-select]');
+      boxes.forEach(cb => {
+        cb.checked = e.target.checked;
+        if(e.target.checked) bankSelection.add(cb.dataset.bankSelect); else bankSelection.delete(cb.dataset.bankSelect);
+      });
+      updateBankBulkBar();
+    });
+    document.getElementById('btnBulkDeleteBank').addEventListener('click', async () => {
+      if(!bankSelection.size) return;
+      if(await confirmDialog('Delete ' + bankSelection.size + ' question(s)?', 'This only removes them from the bank.')){
+        state.bank = state.bank.filter(q => !bankSelection.has(q.id));
+        bankSelection.clear();
+        saveBank(); renderBank();
+      }
+    });
+    document.getElementById('btnBulkAddToTest').addEventListener('click', () => {
+      if(!bankSelection.size) return;
+      bankSelection.forEach(id => {
+        const q = state.bank.find(x => x.id === id);
+        if(q){ const copy = JSON.parse(JSON.stringify(q)); copy.id = uid('q'); state.currentTest.questions.push(copy); }
+      });
+      autosaveDraft();
+      toast(bankSelection.size + ' question(s) added to "' + (state.currentTest.title || 'current test') + '"', 'ok');
+      bankSelection.clear();
+      renderBank();
+    });
 
     // export view
     document.getElementById('exp-testselect').addEventListener('change', renderExportSummary);

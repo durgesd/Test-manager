@@ -36,10 +36,25 @@ const OMR = (() => {
     return columns;
   }
 
+  function getRollDigits(){
+    return Math.max(3, Math.min(12, Number(document.getElementById('omr-rolldigits').value) || 6));
+  }
+
+  function buildRollBubbles(digits){
+    let cols = '';
+    for(let c = 0; c < digits; c++){
+      let bubbles = '';
+      for(let d = 0; d <= 9; d++){ bubbles += `<div class="omr-roll-bub">${d}</div>`; }
+      cols += `<div class="omr-roll-col"><div class="omr-roll-digitbox"></div>${bubbles}</div>`;
+    }
+    return `<div class="omr-roll-wrap"><div class="omr-roll-title">ROLL NUMBER</div><div class="omr-roll-cols">${cols}</div></div>`;
+  }
+
   function renderSheet(){
     const testName = document.getElementById('omr-testname').value.trim() || 'Practice Test';
     const setCode = document.getElementById('omr-setcode').value;
     const count = getCount();
+    const rollDigits = getRollDigits();
     const { cols } = computeLayout(count);
     const columns = buildColumns(count, cols);
     const letters = ['A','B','C','D'];
@@ -69,11 +84,21 @@ const OMR = (() => {
 
       <div class="omr-fields">
         <div class="of"><b>Student Name:</b></div>
-        <div class="of"><b>Roll Number:</b></div>
         <div class="of"><b>Class:</b></div>
         <div class="of"><b>Date:</b></div>
-        <div class="of"><b>Test Name:</b> ${escapeAttr(testName)}</div>
-        <div class="of"><b>Set / Booklet:</b> ${setCode}</div>
+      </div>
+
+      <div class="omr-rollrow">
+        ${buildRollBubbles(rollDigits)}
+        <div class="omr-roll-wrap">
+          <div class="omr-roll-title">SET</div>
+          <div class="omr-roll-cols">
+            <div class="omr-roll-col">
+              <div class="omr-roll-digitbox"></div>
+              ${letters.map(l => `<div class="omr-roll-bub" style="${l===setCode?'background:#1E2A4A;color:#fff;border-color:#1E2A4A;':''}">${l}</div>`).join('')}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="omr-instructions">
@@ -132,7 +157,7 @@ const OMR = (() => {
       document.getElementById('omr-customCountField').style.display = e.target.value === 'custom' ? '' : 'none';
       renderSheet();
     });
-    ['omr-testname','omr-setcode','omr-customCount'].forEach(id => {
+    ['omr-testname','omr-setcode','omr-customCount','omr-rolldigits'].forEach(id => {
       document.getElementById(id).addEventListener('input', renderSheet);
     });
     document.getElementById('btnOmrPreview').addEventListener('click', renderSheet);

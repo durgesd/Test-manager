@@ -74,6 +74,8 @@ const Generator = (() => {
     '.rs{background:var(--bg);border-radius:10px;padding:12px;text-align:center;}',
     '.rs b{display:block;font-size:19px;}',
     '.review-q{border-top:1px solid var(--border);padding:16px 0;}',
+    '.explain-box{background:var(--bg);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:13px;}',
+    '.explain-box img{max-width:100%;max-height:220px;border-radius:8px;margin-top:6px;display:block;}',
     '.review-q .opt.correct-ans{border-color:var(--green);background:var(--green-soft);}',
     '.review-q .opt.wrong-ans{border-color:var(--red);background:var(--red-soft);}',
     '.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;}',
@@ -102,7 +104,7 @@ const Generator = (() => {
     "    return { text:src.text, image:src.image||'', options:opts4, correctIndex:displayedCorrect,",
     "      marks: (src.marks===null||src.marks===undefined)? raw.defaultMarks : src.marks,",
     "      negMarks: (src.negMarks===null||src.negMarks===undefined)? raw.defaultNeg : src.negMarks,",
-    "      explanation: src.explanation||'', selected:null, marked:false, visited:false };",
+    "      explanation: src.explanation||'', explanationImage: src.explanationImage||'', selected:null, marked:false, visited:false };",
     "  });",
     "  var screen='start', current=0, timeLeft=opts.duration*60, timerId=null;",
     "",
@@ -215,7 +217,7 @@ const Generator = (() => {
     "          else if(idx===q.selected) cls+=' wrong-ans';",
     "          return '<div class=\"'+cls+'\"><span class=\"lt\">'+letters[idx]+'</span><span>'+esc(o.text)+'</span></div>';",
     "        }).join('');",
-    "        var explain = (opts.showExplain && q.explanation) ? ('<p class=\"muted\"><b>Explanation:</b> '+esc(q.explanation)+'</p>') : '';",
+    "        var explain = (opts.showExplain && (q.explanation||q.explanationImage)) ? ('<div class=\"explain-box\"><b>Explanation:</b> '+esc(q.explanation)+(q.explanationImage?('<br><img src=\"'+q.explanationImage+'\">'):'')+'</div>') : '';",
     "        return '<div class=\"review-q\"><p><b>Q'+(i+1)+'.</b> '+esc(q.text)+' '+badge+'</p>'+optsHtml+explain+'</div>';",
     "      }).join('');",
     "    }",
@@ -245,7 +247,8 @@ const Generator = (() => {
         text: q.text, image: q.image || '',
         options: q.options.map(o => ({text:o.text, image:o.image||''})),
         correctIndex: q.correctIndex,
-        marks: q.marks, negMarks: q.negMarks, explanation: q.explanation || ''
+        marks: q.marks, negMarks: q.negMarks,
+        explanation: q.explanation || '', explanationImage: q.explanationImage || ''
       }))
     };
     const optsData = opts;
