@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pragya Coaching — Smart Test Builder &amp; Assessment System</title>
+<meta name="description" content="Build MCQ tests, Navodaya/JNVST papers, printable OMR sheets and offline student test files — all in the browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23D9A441'/%3E%3Ctext x='50' y='68' font-size='58' font-family='Georgia,serif' font-weight='700' fill='%231E2A4A' text-anchor='middle'%3E%E0%A4%AA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">प्र</span>
+      <div class="brand-text">
+        <strong>Pragya Coaching</strong>
+        <span>Smart Test Builder</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="mainNav">
+      <button class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-view="builder">
+        <svg viewBox="0 0 24 24"><path d="M4 19.5V17l10-10 2.5 2.5-10 10H4z"/><path d="M14.5 6.5 17 4l3 3-2.5 2.5"/></svg>
+        <span>Test Builder</span>
+      </button>
+      <button class="nav-item" data-view="navodaya">
+        <svg viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 8-4v6"/><path d="M6 10.5V15c0 1.7 2.7 3 6 3s6-1.3 6-3v-4.5"/></svg>
+        <span>Navodaya / JNVST</span>
+      </button>
+      <button class="nav-item" data-view="bank">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5V12c0 1.7 3.6 3 8 3s8-1.3 8-3V5.5"/><path d="M4 12v6.5c0 1.7 3.6 3 8 3s8-1.3 8-3V12"/></svg>
+        <span>Question Bank</span>
+      </button>
+      <button class="nav-item" data-view="omr">
+        <svg viewBox="0 0 24 24"><rect x="3.5" y="2.5" width="17" height="19" rx="1.5"/><circle cx="8" cy="8" r="1.6"/><circle cx="12.3" cy="8" r="1.6"/><circle cx="16.6" cy="8" r="1.6"/><circle cx="8" cy="13" r="1.6"/><circle cx="12.3" cy="13" r="1.6"/><circle cx="16.6" cy="13" r="1.6"/></svg>
+        <span>OMR Sheet Builder</span>
+      </button>
+      <button class="nav-item" data-view="export">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19.5h16"/></svg>
+        <span>Student Test Export</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.4-2.4.6a7.6 7.6 0 0 0-1.8-1l-.4-2.5h-4l-.4 2.5a7.6 7.6 0 0 0-1.8 1l-2.4-.6-2 3.4L6.2 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.4 2.4-.6a7.6 7.6 0 0 0 1.8 1l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 1.8-1l2.4.6 2-3.4-2-1.5z"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <button class="theme-toggle" id="themeToggle" title="Toggle dark / light mode">
+      <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.4M12 19.1v2.4M4.4 4.4l1.7 1.7M17.9 17.9l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.4 19.6l1.7-1.7M17.9 6.1l1.7-1.7"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24"><path d="M20 14.3A8.5 8.5 0 1 1 9.7 4a7 7 0 0 0 10.3 10.3z"/></svg>
+      <span id="themeLabel">Dark mode</span>
+    </button>
+  </aside>
+
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="topbar-title">
+        <h1 id="viewTitle">Dashboard</h1>
+        <p id="viewSubtitle">An overview of your tests, question bank and activity.</p>
+      </div>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </header>
+
+    <main class="view-container" id="viewContainer">
+
+      <!-- ---------------- DASHBOARD ---------------- -->
+      <section class="view active" id="view-dashboard" data-view="dashboard">
+        <div class="stat-row" id="statRow"></div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Recent tests</h2>
+              <button class="btn btn-ghost btn-sm" data-goto="builder">New test</button>
+            </div>
+            <div id="recentTests" class="stack"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>Question bank by subject</h2></div>
+            <div id="subjectBars" class="bar-list"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Quick actions</h2></div>
+          <div class="quick-actions">
+            <button class="quick-card" data-goto="builder">
+              <svg viewBox="0 0 24 24"><path d="M4 19.5V17l10-10 2.5 2.5-10 10H4z"/></svg>
+              <strong>New Test</strong><span>Build an MCQ test from scratch</span>
+            </button>
+            <button class="quick-card" data-goto="navodaya">
+              <svg viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 8-4v6"/></svg>
+              <strong>Navodaya Paper</strong><span>Mental Ability, Arithmetic &amp; Language</span>
+            </button>
+            <button class="quick-card" data-goto="omr">
+              <svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="1.8"/><circle cx="16" cy="8" r="1.8"/><circle cx="8" cy="16" r="1.8"/><circle cx="16" cy="16" r="1.8"/></svg>
+              <strong>OMR Sheet</strong><span>Printable A4 answer sheet</span>
+            </button>
+            <button class="quick-card" data-goto="export">
+              <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/></svg>
+              <strong>Export for Students</strong><span>Offline HTML test, ready for WhatsApp</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------- TEST BUILDER (shared by general + navodaya) ---------------- -->
+      <section class="view" id="view-builder" data-view="builder">
+        <div class="builder-layout">
+          <div class="panel">
+            <div class="panel-head">
+              <h2 id="builderPanelTitle">Test details</h2>
+              <span class="pill" id="builderCategoryPill">General</span>
+            </div>
+
+            <div class="form-grid" id="testMetaForm">
+              <label class="field">
+                <span>Test title</span>
+                <input type="text" id="f-title" placeholder="e.g. Class 8 Science — Chapter 4">
+              </label>
+              <label class="field">
+                <span>Subject</span>
+                <input type="text" id="f-subject" placeholder="e.g. Science">
+              </label>
+              <label class="field">
+                <span>Chapter</span>
+                <input type="text" id="f-chapter" placeholder="e.g. Light &amp; Reflection">
+              </label>
+              <label class="field" id="sectionField">
+                <span>Section</span>
+                <input type="text" id="f-section" placeholder="e.g. Section A">
+              </label>
+              <label class="field">
+                <span>Difficulty</span>
+                <select id="f-difficulty">
+                  <option value="Easy">Easy</option>
+                  <option value="Medium" selected>Medium</option>
+                  <option value="Hard">Hard</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Duration (minutes)</span>
+                <input type="number" id="f-duration" min="1" value="60">
+              </label>
+              <label class="field">
+                <span>Default marks / question</span>
+                <input type="number" id="f-defmarks" min="0" step="0.5" value="1">
+              </label>
+              <label class="field">
+                <span>Default negative marking</span>
+                <input type="number" id="f-defneg" min="0" step="0.25" value="0">
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <label class="switch"><input type="checkbox" id="f-randomizeQ"><span></span>Randomize question order for each student</label>
+              <label class="switch"><input type="checkbox" id="f-randomizeO"><span></span>Randomize the A–D option order</label>
+              <label class="switch"><input type="checkbox" id="f-showExplain" checked><span></span>Show explanations after submission</label>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Questions <span class="count-badge" id="qCountBadge">0</span></h2>
+              <div class="head-actions">
+                <button class="btn btn-ghost btn-sm" id="btnImportBank">Import from bank</button>
+                <button class="btn btn-primary btn-sm" id="btnAddQuestion">+ Add question</button>
+              </div>
+            </div>
+            <div class="qlist" id="questionList">
+              <div class="empty-state">
+                <svg viewBox="0 0 24 24"><path d="M4 19.5V17l10-10 2.5 2.5-10 10H4z"/></svg>
+                <p>No questions yet. Add your first MCQ — every question always has exactly 4 options (A–D).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="builder-footer">
+          <div class="footer-left">
+            <span id="autosaveNote" class="muted-note">Draft auto-saves as you work</span>
+          </div>
+          <div class="footer-actions">
+            <button class="btn btn-ghost" id="btnPreviewTest">Live preview</button>
+            <button class="btn btn-ghost" id="btnExportJson">Export JSON</button>
+            <button class="btn btn-ghost" id="btnClearTest">Clear</button>
+            <button class="btn btn-primary" id="btnSaveTest">Save test</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------- NAVODAYA (routes into builder with preset) ---------------- -->
+      <section class="view" id="view-navodaya" data-view="navodaya">
+        <div class="panel">
+          <div class="panel-head"><h2>Navodaya / JNVST paper</h2></div>
+          <p class="panel-desc">A JNVST-style paper is a test made of four fixed sections: Mental Ability, Arithmetic, Language and one Custom section you name yourself. Pick a section below, then add questions the same way as the Test Builder — always 4 options, A to D.</p>
+          <div class="section-tabs" id="navodayaSectionTabs">
+            <button class="section-tab active" data-section="Mental Ability">Mental Ability</button>
+            <button class="section-tab" data-section="Arithmetic">Arithmetic</button>
+            <button class="section-tab" data-section="Language">Language</button>
+            <button class="section-tab" data-section="Custom">Custom</button>
+          </div>
+          <label class="field" id="navodayaCustomNameField" style="display:none;max-width:320px;margin-top:10px;">
+            <span>Custom section name</span>
+            <input type="text" id="f-navCustomName" placeholder="e.g. General Knowledge">
+          </label>
+          <button class="btn btn-primary" id="btnOpenNavodayaBuilder" style="margin-top:14px;">Open builder for this section</button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Navodaya tests</h2></div>
+          <div id="navodayaTestList" class="stack"></div>
+        </div>
+      </section>
+
+      <!-- ---------------- QUESTION BANK ---------------- -->
+      <section class="view" id="view-bank" data-view="bank">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Question bank <span class="count-badge" id="bankCountBadge">0</span></h2>
+            <button class="btn btn-primary btn-sm" id="btnAddBankQuestion">+ Add question to bank</button>
+          </div>
+          <div class="filter-row">
+            <input type="search" id="bankSearch" placeholder="Search question text…">
+            <select id="bankFilterSubject"><option value="">All subjects</option></select>
+            <select id="bankFilterDifficulty">
+              <option value="">All difficulties</option>
+              <option>Easy</option><option>Medium</option><option>Hard</option>
+            </select>
+          </div>
+          <div class="qlist" id="bankList"></div>
+        </div>
+      </section>
+
+      <!-- ---------------- OMR BUILDER ---------------- -->
+      <section class="view" id="view-omr" data-view="omr">
+        <div class="omr-layout">
+          <div class="panel omr-controls">
+            <div class="panel-head"><h2>OMR configuration</h2></div>
+            <div class="form-grid one-col">
+              <label class="field">
+                <span>Test name</span>
+                <input type="text" id="omr-testname" placeholder="e.g. Weekly Test — Mathematics" value="Weekly Practice Test">
+              </label>
+              <label class="field">
+                <span>Number of questions</span>
+                <select id="omr-count">
+                  <option value="20">20</option>
+                  <option value="40">40</option>
+                  <option value="50" selected>50</option>
+                  <option value="80">80</option>
+                  <option value="100">100</option>
+                  <option value="custom">Custom…</option>
+                </select>
+              </label>
+              <label class="field" id="omr-customCountField" style="display:none;">
+                <span>Custom question count</span>
+                <input type="number" id="omr-customCount" min="1" max="300" value="60">
+              </label>
+              <label class="field">
+                <span>Booklet / Set code</span>
+                <select id="omr-setcode">
+                  <option>A</option><option>B</option><option>C</option><option>D</option>
+                </select>
+              </label>
+            </div>
+            <div class="omr-actions">
+              <button class="btn btn-ghost" id="btnOmrPreview">Refresh preview</button>
+              <button class="btn btn-ghost" id="btnOmrPrint">Print</button>
+              <button class="btn btn-primary" id="btnOmrPdf">Download PDF</button>
+            </div>
+            <p class="muted-note">Layout (columns/rows) is chosen automatically to fit an A4 page neatly.</p>
+          </div>
+
+          <div class="omr-preview-wrap">
+            <div class="omr-sheet" id="omrSheet"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------- STUDENT EXPORT ---------------- -->
+      <section class="view" id="view-export" data-view="export">
+        <div class="panel">
+          <div class="panel-head"><h2>Generate a standalone student test</h2></div>
+          <p class="panel-desc">Pick a saved test and Pragya Coaching will package it into a single offline HTML file — timer, navigation, mark-for-review and auto-scoring included. Send the file over WhatsApp; students just open it in any browser, no internet needed.</p>
+
+          <div class="form-grid one-col">
+            <label class="field">
+              <span>Select a test</span>
+              <select id="exp-testselect"></select>
+            </label>
+            <label class="field">
+              <span>Test duration for students (minutes)</span>
+              <input type="number" id="exp-duration" min="1" value="60">
+            </label>
+          </div>
+          <div class="toggle-row">
+            <label class="switch"><input type="checkbox" id="exp-randomizeQ"><span></span>Randomize question order per attempt</label>
+            <label class="switch"><input type="checkbox" id="exp-randomizeO"><span></span>Randomize option order per attempt</label>
+            <label class="switch"><input type="checkbox" id="exp-showResult" checked><span></span>Show score &amp; correct/incorrect on submit</label>
+            <label class="switch"><input type="checkbox" id="exp-showExplain" checked><span></span>Show explanations after submission</label>
+          </div>
+
+          <div id="exp-summary" class="export-summary"></div>
+
+          <div class="footer-actions" style="padding:0;border:0;">
+            <button class="btn btn-ghost" id="btnExportPreview">Preview in new tab</button>
+            <button class="btn btn-primary" id="btnExportDownload">Generate &amp; download HTML</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------- SETTINGS ---------------- -->
+      <section class="view" id="view-settings" data-view="settings">
+        <div class="panel">
+          <div class="panel-head"><h2>Appearance</h2></div>
+          <div class="toggle-row">
+            <label class="switch"><input type="checkbox" id="set-darkmode"><span></span>Dark mode</label>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Backup &amp; restore</h2></div>
+          <p class="panel-desc">Everything is stored locally in this browser (LocalStorage). Export a backup regularly, especially before clearing browser data.</p>
+          <div class="footer-actions" style="padding:0;border:0;">
+            <button class="btn btn-ghost" id="btnExportAll">Export all data (JSON)</button>
+            <label class="btn btn-ghost" for="importAllFile" style="cursor:pointer;">Import backup
+              <input type="file" id="importAllFile" accept="application/json" style="display:none;">
+            </label>
+            <button class="btn btn-danger" id="btnClearAll">Erase all data</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>About</h2></div>
+          <p class="panel-desc">Pragya Coaching Smart Test Builder — a fully client-side assessment toolkit. No backend, no accounts, no data leaves this device. Built for GitHub Pages.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ QUESTION EDITOR MODAL ============ -->
+<div class="modal-backdrop" id="qModalBackdrop">
+  <div class="modal modal-lg" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="qModalTitle">Add question</h3>
+      <button class="icon-btn" id="qModalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <label class="field">
+        <span>Question text</span>
+        <textarea id="q-text" rows="3" placeholder="Type the question here…"></textarea>
+      </label>
+      <label class="field">
+        <span>Question image (optional)</span>
+        <input type="file" id="q-image" accept="image/*">
+        <div class="img-preview" id="q-image-preview"></div>
+      </label>
+
+      <div class="options-grid" id="optionsEditor"></div>
+
+      <div class="form-grid">
+        <label class="field">
+          <span>Marks</span>
+          <input type="number" id="q-marks" step="0.5" min="0" value="1">
+        </label>
+        <label class="field">
+          <span>Negative marks</span>
+          <input type="number" id="q-negmarks" step="0.25" min="0" value="0">
+        </label>
+        <label class="field">
+          <span>Subject</span>
+          <input type="text" id="q-subject" placeholder="Auto-filled from test">
+        </label>
+        <label class="field">
+          <span>Chapter</span>
+          <input type="text" id="q-chapter" placeholder="Auto-filled from test">
+        </label>
+        <label class="field">
+          <span>Difficulty</span>
+          <select id="q-difficulty">
+            <option value="Easy">Easy</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Explanation (shown to students after submission, optional)</span>
+        <textarea id="q-explanation" rows="2" placeholder="Why is the correct option right?"></textarea>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="qModalCancel">Cancel</button>
+      <button class="btn btn-primary" id="qModalSave">Save question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PREVIEW MODAL ============ -->
+<div class="modal-backdrop" id="previewModalBackdrop">
+  <div class="modal modal-lg" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3>Live preview</h3>
+      <button class="icon-btn" id="previewModalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="previewModalBody"></div>
+  </div>
+</div>
+
+<!-- ============ BANK PICKER MODAL ============ -->
+<div class="modal-backdrop" id="bankPickerBackdrop">
+  <div class="modal modal-lg" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3>Import from question bank</h3>
+      <button class="icon-btn" id="bankPickerClose" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="search" id="bankPickerSearch" placeholder="Search question bank…" style="margin-bottom:12px;">
+      <div class="qlist" id="bankPickerList"></div>
+    </div>
+    <div class="modal-foot">
+      <span class="muted-note" id="bankPickerCount">0 selected</span>
+      <button class="btn btn-primary" id="bankPickerImport">Import selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIRM MODAL ============ -->
+<div class="modal-backdrop" id="confirmBackdrop">
+  <div class="modal modal-sm" role="dialog" aria-modal="true">
+    <div class="modal-body">
+      <h3 id="confirmTitle">Are you sure?</h3>
+      <p id="confirmMsg" class="panel-desc"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="js/app.js"></script>
+<script src="js/omr.js"></script>
+<script src="js/generator.js"></script>
+</body>
+</html>
