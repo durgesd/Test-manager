@@ -183,6 +183,7 @@
               <h2>Questions <span class="count-badge" id="qCountBadge">0</span></h2>
               <div class="head-actions">
                 <button class="btn btn-ghost btn-sm" id="btnImportBank">Import from bank</button>
+                <button class="btn btn-ghost btn-sm" id="btnBulkAddTest">Bulk add</button>
                 <button class="btn btn-primary btn-sm" id="btnAddQuestion">+ Add question</button>
               </div>
             </div>
@@ -237,15 +238,33 @@
         <div class="panel">
           <div class="panel-head">
             <h2>Question bank <span class="count-badge" id="bankCountBadge">0</span></h2>
-            <button class="btn btn-primary btn-sm" id="btnAddBankQuestion">+ Add question to bank</button>
+            <div class="head-actions">
+              <button class="btn btn-ghost btn-sm" id="btnBulkAddBank">Bulk add</button>
+              <button class="btn btn-primary btn-sm" id="btnAddBankQuestion">+ Add question</button>
+            </div>
           </div>
+          <div class="bank-stats" id="bankStats"></div>
           <div class="filter-row">
-            <input type="search" id="bankSearch" placeholder="Search question text…">
+            <input type="search" id="bankSearch" placeholder="Search question text or tag…">
             <select id="bankFilterSubject"><option value="">All subjects</option></select>
             <select id="bankFilterDifficulty">
               <option value="">All difficulties</option>
               <option>Easy</option><option>Medium</option><option>Hard</option>
             </select>
+            <select id="bankSort">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="subject">Subject A–Z</option>
+              <option value="difficulty">Difficulty</option>
+            </select>
+          </div>
+          <label class="switch" style="margin-bottom:10px;"><input type="checkbox" id="bankSelectAll"><span></span>Select all shown</label>
+          <div class="bulk-bar" id="bankBulkBar" style="display:none;">
+            <span id="bankBulkCount">0 selected</span>
+            <div class="head-actions">
+              <button class="btn btn-ghost btn-sm" id="btnBulkAddToTest">Add to current test</button>
+              <button class="btn btn-danger btn-sm" id="btnBulkDeleteBank">Delete selected</button>
+            </div>
           </div>
           <div class="qlist" id="bankList"></div>
         </div>
@@ -281,6 +300,10 @@
                 <select id="omr-setcode">
                   <option>A</option><option>B</option><option>C</option><option>D</option>
                 </select>
+              </label>
+              <label class="field">
+                <span>Roll number digits</span>
+                <input type="number" id="omr-rolldigits" min="3" max="12" value="6">
               </label>
             </div>
             <div class="omr-actions">
@@ -373,7 +396,7 @@
         <textarea id="q-text" rows="3" placeholder="Type the question here…"></textarea>
       </label>
       <label class="field">
-        <span>Question image (optional)</span>
+        <span>Question image (optional) — you'll get a crop &amp; preview step</span>
         <input type="file" id="q-image" accept="image/*">
         <div class="img-preview" id="q-image-preview"></div>
       </label>
@@ -405,11 +428,20 @@
             <option value="Hard">Hard</option>
           </select>
         </label>
+        <label class="field">
+          <span>Tags (comma separated)</span>
+          <input type="text" id="q-tags" placeholder="e.g. formula, important, previous-year">
+        </label>
       </div>
 
       <label class="field">
         <span>Explanation (shown to students after submission, optional)</span>
         <textarea id="q-explanation" rows="2" placeholder="Why is the correct option right?"></textarea>
+      </label>
+      <label class="field">
+        <span>Explanation image (optional)</span>
+        <input type="file" id="q-explanation-image" accept="image/*">
+        <div class="img-preview" id="q-explanation-image-preview"></div>
       </label>
     </div>
     <div class="modal-foot">
@@ -452,6 +484,101 @@
   </div>
 </div>
 
+<!-- ============ BULK IMPORT MODAL ============ -->
+<div class="modal-backdrop" id="bulkModalBackdrop">
+  <div class="modal modal-lg" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="bulkModalTitle">Bulk add questions</h3>
+      <button class="icon-btn" id="bulkModalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <details class="format-guide" open>
+        <summary>Fixed format — how to write your questions</summary>
+        <pre id="bulkFormatSample">Q: What is the capital of India?
+A: Mumbai
+B: New Delhi
+C: Chennai
+D: Kolkata
+Correct: B
+Marks: 1
+Negative: 0.25
+Subject: GK
+Chapter: Geography
+Difficulty: Medium
+Tags: capitals, india
+Explanation: New Delhi has been the capital of India since 1911.
+
+Q: 7 x 8 = ?
+A: 54
+B: 56
+C: 58
+D: 64
+Correct: B</pre>
+        <p class="muted-note">Separate each question with a blank line. Only <b>Q</b>, <b>A/B/C/D</b> and <b>Correct</b> are required — everything else is optional and falls back to the test's defaults. Paste as many questions as you like.</p>
+        <button class="btn btn-ghost btn-sm" id="btnDownloadTemplate">Download sample .txt template</button>
+      </details>
+
+      <label class="field">
+        <span>Paste your questions here</span>
+        <textarea id="bulkText" rows="10" placeholder="Paste questions in the format shown above…"></textarea>
+      </label>
+
+      <div class="head-actions">
+        <button class="btn btn-ghost btn-sm" id="btnBulkLoadFile">Load from .txt file</button>
+        <input type="file" id="bulkFileInput" accept=".txt,text/plain" style="display:none;">
+        <button class="btn btn-primary btn-sm" id="btnBulkParse">Parse &amp; preview</button>
+      </div>
+
+      <div id="bulkPreviewWrap" style="display:none;">
+        <div class="panel-head" style="margin-top:6px;">
+          <h2 id="bulkPreviewSummary">0 valid · 0 invalid</h2>
+        </div>
+        <div class="qlist" id="bulkPreviewList"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="muted-note" id="bulkImportCount"></span>
+      <button class="btn btn-primary" id="btnBulkImportAll" disabled>Add valid questions</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ IMAGE CROP MODAL ============ -->
+<div class="modal-backdrop" id="cropModalBackdrop">
+  <div class="modal modal-lg" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3>Crop image</h3>
+      <button class="icon-btn" id="cropModalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="cropper-stage" id="cropperStage">
+        <img id="cropperImg" alt="" draggable="false">
+        <div class="crop-box" id="cropBox">
+          <div class="crop-handle nw" data-handle="nw"></div>
+          <div class="crop-handle ne" data-handle="ne"></div>
+          <div class="crop-handle sw" data-handle="sw"></div>
+          <div class="crop-handle se" data-handle="se"></div>
+        </div>
+      </div>
+      <div class="cropper-tools">
+        <span class="muted-note">Aspect:</span>
+        <button class="btn btn-ghost btn-sm ratio-btn active" data-ratio="free">Free</button>
+        <button class="btn btn-ghost btn-sm ratio-btn" data-ratio="1:1">Square</button>
+        <button class="btn btn-ghost btn-sm ratio-btn" data-ratio="4:3">4:3</button>
+        <button class="btn btn-ghost btn-sm" id="cropResetBtn">Reset selection</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cropSkipBtn">Use original (skip crop)</button>
+      <button class="btn btn-primary" id="cropApplyBtn">Apply crop</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ CONFIRM MODAL ============ -->
 <div class="modal-backdrop" id="confirmBackdrop">
   <div class="modal modal-sm" role="dialog" aria-modal="true">
@@ -468,6 +595,7 @@
 
 <div class="toast-stack" id="toastStack"></div>
 
+<script src="js/cropper.js"></script>
 <script src="js/app.js"></script>
 <script src="js/omr.js"></script>
 <script src="js/generator.js"></script>
